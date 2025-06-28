@@ -13,8 +13,11 @@ class Client extends Model
         'subscription_token'
     ];
 
-    public function subscriptions()
+    public function subscriptions(){
+        return $this->hasOne(Subscription::class);
+    }
+    public function activeSubscription()
     {
-        return $this->hasOne(Subscription::class, 'client_id');
+        return $this->subscriptions()->where('is_active', true)->where('expires_at', '>', now())->first();
     }
 }

@@ -11,16 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('subscriptions', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('client_id')->constrained('clients');
-            $table->decimal('amount_paid', 10, 2)->nullable();
-            $table->integar('valid_days');
-            $table->text('description')->nullable();
-            $table->text('expires_at');
-            $table->text('is_active')->default(true);
-            $table->timestamps();
-        });
+            Schema::create('subscriptions', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('client_id')->constrained('clients');
+                $table->decimal('amount_paid', 10, 2)->nullable();
+                $table->integer('valid_days');
+                $table->text('description')->nullable();
+                $table->text('expires_at');
+                $table->text('is_active')->default(true);
+
+                $table->boolean('is_trial')->default(false);
+                $table->text('trial_ends_at')->nullable();
+                
+                $table->timestamps();
+            });
     }
 
     /**

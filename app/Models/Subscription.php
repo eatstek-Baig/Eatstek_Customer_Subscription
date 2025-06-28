@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class Subscription extends Model
@@ -11,8 +12,12 @@ class Subscription extends Model
         'valid_days',
         'description',
         'expires_at',
+        'is_trial',
         'is_active'
     ];
+
+    protected $dates = [
+        'expires_at'];
 
     public function client()
     {
@@ -22,5 +27,16 @@ class Subscription extends Model
     public function isExpired()
     {
         return $this->expires_at && now()->gt($this->expires_at);
+    }
+
+    public function isActive(){
+        return $this->is_active && now()->lt($this->expires_at);
+    }
+/**
+ * Scope a query to only include active subscriptions.
+ * @param  \Illuminate\Database\Eloquent\Builder  $query
+ */
+    public function scopeCheckSubsctiptions(Builder $query) {
+        return $query->where('is_active', true)->where('expires_at', '>', now());
     }
 }
