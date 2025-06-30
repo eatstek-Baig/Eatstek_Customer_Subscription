@@ -18,6 +18,6 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })->withSchedule(function (Schedule $schedule): void {
-        $schedule->command('subscriptions:check-expired')->everyMinute();
+        $schedule->command('subscriptions:check-expired')->everyMinute()->withoutOverlapping(1);
     })
     ->create();

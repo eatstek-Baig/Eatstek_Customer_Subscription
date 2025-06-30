@@ -17,23 +17,27 @@ class SubscriptionService
         int $validDays,
         ?string $description
     ): Subscription {
-        //safely handle existing active subscription
-        if($activeSub = $client->activeSubscription()){
 
-            $activeSub->update(['is_active' => false]);
+        $subscription = $client->subscription()->latest()->first();
+
+        if(!$subscription){
+            $subscription = new Subscription([
+                'client_id' => $client->id
+            ]);
         }
 
-        $subscription = new Subscription([
-            'client_id' => $client->id,
+        $subscription->update([
             'amount_paid' => $isTrial ? 0 : $amount,
-            'valid_days' => $validDays,
             'description' => $description,
             'is_trial' => $isTrial,
-            'expires_at' => now()->addDays($validDays),
+            'expires_at' => now()->addMinutes($validDays),
+            'valid_days' => (int)now()->diffInMinutes(now()->addMinutes($validDays), false),
             'is_active' => true
         ]);
 
-        $client->subscriptions()->save($subscription);
+        $client->subscription()->save($subscription);
+
+        logger('difference in minutes: ' . now()->diffInMinutes($subscription->expires_at, false));
 
         //sync with the client 
         $this->syncWithClient($client);
@@ -41,60 +45,101 @@ class SubscriptionService
         return $subscription;
     }
 
-    protected function syncWithClient(Client $client) {
+    protected function syncWithClient(Client $client)
+    {
+        try {
+            $subscription = $client->subscription;
 
-        $subscription = $client->activeSubscription();
+            logger('subscription: ');
+            logger($subscription->toArray());
 
-        if(!$subscription){
-            Log::error('No active subscription found for client: ' . $client->name);
-            return;
-        }
+            if(!$subscription){
+                throw new Exception('Subscription not found');
+            }
 
-        try{
-            $response = Http::post("{$client->domain}/api/subscription/update", [
+            if (!$subscription->is_trial) {
+
+                $response = Http::patch("{$client->domain}/api/subscription/update", [
+                    'token' => $client->subscription_token,
+                    'action' => $client->activeSubscription() ? 'activate' : 'deactivate',
+                    'days' => $subscription->valid_days,
+                    'amount_paid' => $subscription->amount_paid,
+                ]);
+
+                logger($response->successful());
+
+                if (!$response->successful()) {
+                    logger("Error syncing with client: {$client->name}: " . $response->body());
+                }
+            }
+
+            $response = Http::post("{$client->domain}/api/subscription/store", [
                 'token' => $client->subscription_token,
-                'action' => 'activate',
+                'action' => $client->activeSubscription() ? 'activate' : 'deactivate',
                 'days' => $subscription->valid_days,
                 'amount_paid' => $subscription->amount_paid,
                 'is_trial' => $subscription->is_trial,
             ]);
 
-            if(!$response->successful()){
-                dump("Error syncing with client: {$client->name}: " . $response->body());
+            if (!$response->successful()) {
+                logger("Error syncing with client: {$client->name}: " . $response->body());
             }
 
-        }catch(Exception $ex){
+        } catch (Exception $ex) {
             return Log::error('Client sync error' . $ex->getMessage());
         }
     }
 
     //checking the subscription
-    public function checkSubscriptionExpiry(){
+    public function checkSubscriptionExpiry()
+    {
 
-        $subscriptions = Subscription::checkSubsctiptions();
+        $subscriptions = Subscription::with('client')->checkSubscriptions()->get();
 
-        foreach($subscriptions as $subscription){
+        foreach ($subscriptions as $subscription) {
             $this->expireSubscription($subscription);
         }
         return $subscriptions->count();
     }
 
-    public function expireSubscription(Subscription $subscription){
-        
-        $client = Subscription::client()->first();
+    public function expireSubscription(Subscription $subscription)
+    {
 
-        if(!$client){
+        $client = $subscription->client()->first();
+
+        if (!$client) {
             Log::error('No client found for subscription: ' . $subscription->id);
             return;
         }
 
         $subscription->update([
             'is_active' => false,
-            'is_trial' => false
+            'is_trial' => false,
+            'amount_paid' => 0.00,
+            'valid_days' => now()->diffInMinutes($subscription->expires_at, false) < 0 ? 0 : now()->diffInMinutes($subscription->expires_at, false),
+            'expires_at' => null,
+            'description' => 'Subscription has been expired',
         ]);
 
-        $this->syncWithClient($client);
+        $this->syncWithClientForExpiry($client);
 
         Log::info("Subscription expired for {$subscription->client->name}");
+    }
+
+    protected function syncWithClientForExpiry(Client $client)
+    {
+        try {
+            $response = Http::patch("{$client->domain}/api/subscription/update", [
+                'token' => $client->subscription_token,
+                'action' => $client->activeSubscription() ? 'activate' : 'deactivate',
+            ]);
+
+            if (!$response->successful()) {
+                dump("Error syncing with client: {$client->name}: " . $response->body());
+            }
+
+        } catch (Exception $ex) {
+            return Log::error('Client sync error' . $ex->getMessage());
+        }
     }
 }

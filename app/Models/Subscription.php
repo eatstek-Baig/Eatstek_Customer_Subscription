@@ -29,14 +29,14 @@ class Subscription extends Model
         return $this->expires_at && now()->gt($this->expires_at);
     }
 
-    public function isActive(){
+    public function scopeIsActive(){
         return $this->is_active && now()->lt($this->expires_at);
     }
 /**
  * Scope a query to only include active subscriptions.
  * @param  \Illuminate\Database\Eloquent\Builder  $query
  */
-    public function scopeCheckSubsctiptions(Builder $query) {
-        return $query->where('is_active', true)->where('expires_at', '>', now());
+    public function scopeCheckSubscriptions(Builder $query) {
+        return $query->where('is_active', true)->where('expires_at', '<=', now());
     }
 }

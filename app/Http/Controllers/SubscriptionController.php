@@ -57,37 +57,46 @@ class SubscriptionController extends Controller
     }
     public function index()
     {
-        $client = Client::with(['subscription' => function ($query) {
-            $query->latest();
+        $clients = Client::with(['subscription' => function ($query) {
+            $query->latest('expires_at');
         }])->get();
 
         return response()->json([
             'success' => true,
-            'data' => $client
+            'data' => $clients->map(function ($client) {
+                return [
+                    'id' => $client->id,
+                    'name' => $client->name,
+                    'domain' => $client->domain,
+                    'subscription' => $client->subscription,
+                    'active_subscription' => $client->subscription?->isActive() ?? false
+                ];
+            })
         ]);
     }
 
-    public function store(Request $request, SubscriptionService $service){
+    public function update(Request $request, SubscriptionService $service){
         
         $validated = $request->validate([
             'client_id' => 'required|exists:clients,id',
             'amount_paid' => 'required|numeric|min:0',
-            'valid_days' => 'required|integar|min:1',
+            'valid_days' => 'required|integer|min:1',
             'description' => 'nullable|string',
-            'is_trial' => 'required|boolean',
         ]);
 
+        // dd($validated['amount_paid']);
         $client = Client::find($validated['client_id']);
 
         $subscription = $service->createManualSubscripton(
             $client,
-            $validated['is_trial'],
+            $validated['amount_paid'] === 0 ? true : false,
             $validated['amount_paid'],
             $validated['valid_days'],
             $validated['description']);
 
         return response()->json([
             'success' => true,
+            'message' => 'Subscription extended successfully',
             'data' => $subscription
         ]);
     

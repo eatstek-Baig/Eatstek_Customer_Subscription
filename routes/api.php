@@ -5,3 +5,4 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/client/register', [SubscriptionController::class, 'registerClient']);
 Route::get('/client/status', [SubscriptionController::class, 'index']);
+Route::patch('/client/update', [SubscriptionController::class, 'update']);
