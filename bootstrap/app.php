@@ -19,5 +19,11 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })->withSchedule(function (Schedule $schedule): void {
         $schedule->command('subscriptions:check-expired')->everyMinute()->withoutOverlapping(1);
-    })
+    })->withProviders([
+        Tymon\JWTAuth\Providers\LaravelServiceProvider::class
+    ])
+    // ->withAliases([
+    //      'JWTAuth' => Tymon\JWTAuth\Facades\JWTAuth::class,
+    //     'JWTFactory' => Tymon\JWTAuth\Facades\JWTFactory::class,
+    // ])
     ->create();
