@@ -22,7 +22,13 @@ class SubscriptionService
 
         if(!$subscription){
             $subscription = new Subscription([
-                'client_id' => $client->id
+            'client_id' => $client->id,
+            'amount_paid' => $isTrial ? 0 : $amount,
+            'description' => $description,
+            'is_trial' => $isTrial,
+            'expires_at' => now()->addMinutes($validDays),
+            'valid_days' => $validDays,
+            'is_active' => true
             ]);
         }
 
@@ -95,9 +101,23 @@ class SubscriptionService
     {
 
         $subscriptions = Subscription::with('client')->checkSubscriptions()->get();
+        logger('subscription: ');
+        logger($subscriptions);
 
         foreach ($subscriptions as $subscription) {
+
+            $remainingMinutes = now()->diffInMinutes($subscription->expires_at, false);
+
+            logger('checking remaining subscritop');
+             // Update valid_days continuously
+        $subscription->update([
+            'valid_days' => max(0, $remainingMinutes) // Never negative
+        ]);
+            
+            // Handle expiration if time is up
+        if ($remainingMinutes <= 0) {
             $this->expireSubscription($subscription);
+        }
         }
         return $subscriptions->count();
     }
@@ -106,6 +126,10 @@ class SubscriptionService
     {
 
         $client = $subscription->client()->first();
+
+        logger('client: ');
+        logger($client);
+
 
         if (!$client) {
             Log::error('No client found for subscription: ' . $subscription->id);
@@ -116,7 +140,7 @@ class SubscriptionService
             'is_active' => false,
             'is_trial' => false,
             'amount_paid' => 0.00,
-            'valid_days' => now()->diffInMinutes($subscription->expires_at, false) < 0 ? 0 : now()->diffInMinutes($subscription->expires_at, false),
+            // 'valid_days' => now()->diffInMinutes($subscription->expires_at, false) <= 0 ? 0 : now()->diffInMinutes($subscription->expires_at, false),
             'expires_at' => null,
             'description' => 'Subscription has been expired',
         ]);
@@ -129,10 +153,16 @@ class SubscriptionService
     protected function syncWithClientForExpiry(Client $client)
     {
         try {
+            logger('active subscription: ');
+            logger($client->activeSubscription());
+
             $response = Http::patch("{$client->domain}/api/subscription/update", [
                 'token' => $client->subscription_token,
                 'action' => $client->activeSubscription() ? 'activate' : 'deactivate',
             ]);
+
+            logger('response: ');
+            logger($response->successful());
 
             if (!$response->successful()) {
                 dump("Error syncing with client: {$client->name}: " . $response->body());

@@ -89,12 +89,17 @@ class AuthController extends Controller
         
         try{
 
-            JWTAuth::invalidate(JWTAuth::getToken());
+            if(!(JWTAuth::invalidate(JWTAuth::getToken()))){
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to logout'
+                ], 400);
+            }
             
             return response()->json([
                 'success' => true,
                 'message' => 'logged out Successfully!'
-            ]);
+            ], 200);
 
         }catch(Exception $ex){
             return response()->json([
@@ -107,20 +112,33 @@ class AuthController extends Controller
 
         public function user(Request $request)
     {
-        return response()->json(JWTAuth::user());
+        if(!JWTAuth::user()){
+            return response()->json([
+                'success' => false,
+                'message' => 'permission denied' 
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'user' => JWTAuth::user()
+        ]);
     }
 
         public function refresh()
     {
         try {
             $token = JWTAuth::getToken();
+            
             if (!JWTAuth::getToken()) {
                 return response()->json([
                     'error' => 'Token not provided'
                 ], 400);
             }
+
             $refreshToken = JWTAuth::refresh($token);
             $newToken = $this->respondWithToken($refreshToken)->original['access_token'];
+            
             return response()->json([
                 'token' => $newToken,
             ]);

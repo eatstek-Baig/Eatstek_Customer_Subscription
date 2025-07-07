@@ -1,46 +1,47 @@
 import React from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import ApiService from "../lib/services/apis";
-import { AuthStorage } from "../lib/utils/AuthStorage";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { AuthService } from "../lib/services/auth/AuthService";
+import { toast } from "react-toastify";
+import { usesAuthContext } from "../lib/contexts/AuthContext";
 
 const AdminLogin = () => {
-        
+
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+
     const [error, setError] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const { login } = usesAuthContext();
 
-    const [successMessage, setSuccessMessage] = useState("");
-    // const { login } = useSGlobalContext();
     const navigate = useNavigate();
 
     const togglePasswordVisibility = () => {
         setShowPassword(!showPassword);
     };
 
-    const handleLogin = async (e) => {
-        
-        setLoading(true);
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         try {
-            const response = await ApiService.adminLogin(email, password);
+            const response = await AuthService.login(email, password);
 
-            console.log(response);
+            if (response.data.success) {
+                login(response.data);
+                navigate("/");
 
-            if (response.success) {
-            
-                AuthStorage.setToken(response?.token);
-                navigate("/dashboard");
             } else {
-                setError(response.data?.error || "Invalid credentials. Please try again.");
+                console.log(response)
+                toast.error(
+                        "Invalid Credentials. Please try again."
+                );
             }
         } catch (err) {
-            setError(err?.message || "Invalid credentials. Please try again.");
-        }finally{
+            toast.error("Login failed. Please try again.");
+            // setError(err?.message || "Login failed. Please try again.");
+        } finally {
             setLoading(false);
         }
     };
@@ -51,14 +52,18 @@ const AdminLogin = () => {
                 <div className="h-full bg-cover bg-center bg-no-repeat">
                     <div className="flex items-center justify-center h-full">
                         <div className="md:w-96 sm:w-1/4 p-6 bg-white shadow-lg rounded-md">
-                        <img src="/images/EatsTek_logo.png" alt="logo" className="w-36 mx-auto mb-4" />
+                            <img
+                                src="/images/EatsTek_logo.png"
+                                alt="logo"
+                                className="w-36 mx-auto mb-4"
+                            />
                             <h1 className="text-2xl font-medium text-center mb-6">
                                 Eatstek Subscription Management
                             </h1>
                             <h2 className="text-2xl font-semibold text-center mb-4">
                                 Sign in
                             </h2>
-                            <form onSubmit={handleLogin}>
+                            <form onSubmit={handleSubmit}>
                                 <div className="mb-4 mt-4">
                                     <label
                                         htmlFor="email"
@@ -67,8 +72,9 @@ const AdminLogin = () => {
                                         Email
                                     </label>
                                     <input
-                                        type="name"
+                                        type="email"
                                         id="email"
+                                        required
                                         className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-300"
                                         placeholder="Enter your email"
                                         value={email}
@@ -84,17 +90,18 @@ const AdminLogin = () => {
                                     >
                                         Password
                                     </label>
-                                    <div className="relative w-full mt-1">
+                                    <div className="relative w-full mt-1 password-wrapper">
                                         <input
                                             type={
                                                 showPassword
                                                     ? "text"
                                                     : "password"
                                             }
-                                            id="password"
                                             className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-300"
                                             placeholder="Enter your password"
                                             value={password}
+                                            id="password"
+                                            required
                                             onChange={(e) =>
                                                 setPassword(e.target.value)
                                             }
@@ -145,4 +152,4 @@ const AdminLogin = () => {
     );
 };
 
-export default AdminLogin ;
+export default AdminLogin;

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { AuthStorage } from "../../utils/AuthStorage";
+import { usesAuthContext } from "../../contexts/AuthContext";
 
 const ErrorCodeMessages = {
   401: "Unauthorized",
@@ -11,20 +11,35 @@ const ErrorCodeMessages = {
 export const BASE_URL = import.meta.env.VITE_APP_URL;
 
 export const HttpService = axios.create({
-   baseURL: "http://127.0.0.1:8000", // Laravel backend
-  withCredentials: true,
+   baseURL: "http://localhost:8001", // Laravel backend
+  // withCredentials: true,
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
   },
 });
 
+
+let isRefresh = false;
+let failedRequests = [];
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+
+  failedQueue = [];
+};  
+
 //Http request interceptor for auth token
 HttpService.interceptors.request.use(
   (config) => {
-    const token = AuthStorage.getToken();
+    const token = localStorage.getItem('token');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers["Authorization"] = `Bearer ${token}`;
     }
     return config;
   },
@@ -35,32 +50,32 @@ HttpService.interceptors.request.use(
 
 //Http response interceptor
 HttpService.interceptors.response.use(
-  (response) => response.data,
-  (error) => {
-    // if(error.response?.staus === 401 && !originalRequest._retry){
-    //   originalRequest._retry = true
-    //   try{
-    //     const newToken = await refreshToken();
-    //     AuthStorage.setToken(newToken);
-    //     return HttpService(originalRequest);
-    //   }catch(error){
-    //     AuthStorage.clearToken();
-    //     window.location.href = "/login";
-    //     return Promise.reject(error);
-    //   }
-    // }
-
-    if (error.response?.status === 401) {
-      AuthStorage.clearToken();
-      window.location.href = "/login";
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    const status = error.response?.status;
+    const { refreshToken, logout } = usesAuthContext();
+ 
+    if (status === 401 && !originalRequest._retry) {
+       originalRequest._retry = true;
+      
+      try {
+        const newToken = await refreshToken();
+        originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        logout();
+        return Promise.reject(refreshError);
+      }
     }
     
-  
-    const errorCode = error.response?.status;
-    const errorMessage = ErrorCodeMessages[errorCode] || "Something went wrong";
-    return Promise.reject(errorMessage);
+    return Promise.reject(ErrorCodeMessages[status] || "Something went wrong");
   }
 );
 
 
 export default HttpService;
+
+
+
+

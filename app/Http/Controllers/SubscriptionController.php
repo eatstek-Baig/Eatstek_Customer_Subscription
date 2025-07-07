@@ -75,6 +75,25 @@ class SubscriptionController extends Controller
         ]);
     }
 
+    public function indexExpire()
+    {
+        $clients = Client::with(['subscription' => function ($query) {
+            $query->latest('expires_at');
+        }])->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $clients->map(function ($client) {
+                return [
+                    'id' => $client->id,
+                    'name' => $client->name,
+                    'domain' => $client->domain,
+                    'subscription' => $client->subscription,
+                    'active_subscription' => $client->subscription?->isActive() ?? false
+                ];
+            })
+        ]);
+    }
     public function update(Request $request, SubscriptionService $service){
         
         $validated = $request->validate([
