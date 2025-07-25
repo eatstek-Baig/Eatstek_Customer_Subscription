@@ -21,7 +21,6 @@ return new class extends Migration
                 $table->text('is_active')->default(true);
 
                 $table->boolean('is_trial')->default(false);
-                $table->text('trial_ends_at')->nullable();
                 
                 $table->timestamps();
             });

@@ -29,8 +29,8 @@ class Subscription extends Model
         return $this->expires_at && now()->gt($this->expires_at);
     }
 
-    public function scopeIsActive(){
-        return $this->is_active && now()->lt($this->expires_at);
+    public function scopeIsActive($query){
+        return $query->where('is_active', true);
     }
 /**
  * Scope a query to only include active subscriptions.

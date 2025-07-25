@@ -11,7 +11,7 @@ const ErrorCodeMessages = {
 export const BASE_URL = import.meta.env.VITE_APP_URL;
 
 export const HttpService = axios.create({
-   baseURL: "http://localhost:8001", // Laravel backend
+   baseURL: BASE_URL, 
   // withCredentials: true,
   headers: {
     'Accept': 'application/json',
@@ -75,7 +75,3 @@ HttpService.interceptors.response.use(
 
 
 export default HttpService;
-
-
-
-

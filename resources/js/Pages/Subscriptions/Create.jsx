@@ -27,9 +27,9 @@ const ClientRegistration = () => {
 
     const handleSubmit = async (values, { resetForm }) => {
         
-        const domainValue = values.domain.startsWith("http://")
+        const domainValue = values.domain.startsWith("https://")
         ? values.domain
-        : `http://${values.domain}`;
+        : `https://${values.domain}`;
         
         const formData = {
             ...values,
@@ -120,7 +120,7 @@ const ClientRegistration = () => {
                                     </label>
                                     <div className="mt-1 flex rounded-md shadow-sm">
                                         <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-gray-500 sm:text-sm">
-                                            http://
+                                            https://
                                         </span>
                                         <Field
                                             name="domain"
