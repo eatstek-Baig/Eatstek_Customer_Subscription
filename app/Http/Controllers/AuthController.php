@@ -40,33 +40,34 @@ class AuthController extends Controller
         }
     }
 
-    public function login(Request $request){
+    public function login(Request $request)
+    {
 
         $validated = $request->validate([
             'email' => 'required|string|max:255',
-            'password' => 'required|string', 
+            'password' => 'required|string',
         ]);
 
-        try{
+        try {
             $user = User::where('email', $validated['email'])->orWhere('name', $validated['email'])->first();
-            
-            if(!$user){
+
+            if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'User not found' 
-                ],404);
+                    'error' => 'User not found'
+                ], 404);
             }
-            
+
             $credentials = [
                 'email' => $validated['email'],
                 'password' => $validated['password']
             ];
 
-            if(!$token = JWTAuth::attempt($credentials)){
+            if (!$token = JWTAuth::attempt($credentials)) {
                 return response()->json([
                     'success' => false,
                     'error' => 'Invalid Password'
-                ],401);
+                ], 401);
             }
 
             return response()->json([
@@ -76,7 +77,7 @@ class AuthController extends Controller
                 'token' => $this->respondWithToken($token)->original['access_token'],
             ]);
 
-        }catch(Exception $exception){
+        } catch (Exception $exception) {
             return response()->json([
                 'error' => $exception->getMessage(),
                 'line' => $exception->getLine(),
@@ -85,37 +86,48 @@ class AuthController extends Controller
         }
     }
 
-    public function logout(Request $request){
-        
-        try{
+    public function logout(Request $request)
+    {
+        try {
+            $token = JWTAuth::getToken();
 
-            if(!(JWTAuth::invalidate(JWTAuth::getToken()))){
+            if (!$token) {
                 return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to logout'
-                ], 400);
+                    'success' => true,
+                    'message' => 'Logged out successfully (token was already invalid)'
+                ], 200);
             }
-            
+
+            // Invalidate token if it exists
+            JWTAuth::invalidate($token);
+
             return response()->json([
                 'success' => true,
-                'message' => 'logged out Successfully!'
+                'message' => 'Logged out successfully!'
             ], 200);
 
-        }catch(Exception $ex){
+        } catch (\Tymon\JWTAuth\Exceptions\TokenExpiredException $e) {
             return response()->json([
+                'success' => true,
+                'message' => 'Logged out successfully (token was expired)'
+            ], 200);
+
+        } catch (Exception $ex) {
+            return response()->json([
+                'success' => false,
                 'error' => $ex->getMessage(),
                 'line' => $ex->getLine(),
-                'file' => $ex->getFile(),
-            ]);
+                'file' => $ex->getFile()
+            ], 500);
         }
     }
 
-        public function user(Request $request)
+    public function user(Request $request)
     {
-        if(!JWTAuth::user()){
+        if (!JWTAuth::user()) {
             return response()->json([
                 'success' => false,
-                'message' => 'permission denied' 
+                'message' => 'permission denied'
             ]);
         }
 
@@ -125,11 +137,11 @@ class AuthController extends Controller
         ]);
     }
 
-        public function refresh()
+    public function refresh()
     {
         try {
             $token = JWTAuth::getToken();
-            
+
             if (!JWTAuth::getToken()) {
                 return response()->json([
                     'error' => 'Token not provided'
@@ -138,7 +150,7 @@ class AuthController extends Controller
 
             $refreshToken = JWTAuth::refresh($token);
             $newToken = $this->respondWithToken($refreshToken)->original['access_token'];
-            
+
             return response()->json([
                 'token' => $newToken,
             ]);
@@ -156,7 +168,7 @@ class AuthController extends Controller
         return response()->json([
             'access_token' => $token,
             'token_type' => 'bearer',
-            'expires_in' => JWTAuth::factory()->getTTL()
+            'expires_in' => JWTAuth::factory()->getTTL(),
         ]);
     }
 }

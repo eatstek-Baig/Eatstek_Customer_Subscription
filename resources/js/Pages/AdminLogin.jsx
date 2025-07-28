@@ -7,7 +7,6 @@ import { toast } from "react-toastify";
 import { usesAuthContext } from "../lib/contexts/AuthContext";
 
 const AdminLogin = () => {
-
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
@@ -24,6 +23,8 @@ const AdminLogin = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
+        setError("");
 
         try {
             const response = await AuthService.login(email, password);
@@ -31,16 +32,15 @@ const AdminLogin = () => {
             if (response.data.success) {
                 login(response.data);
                 navigate("/");
-
             } else {
-                console.log(response)
-                toast.error(
-                        "Invalid Credentials. Please try again."
-                );
+                toast.error("Invalid Credentials. Please try again.");
             }
         } catch (err) {
-            toast.error("Login failed. Please try again.");
-            // setError(err?.message || "Login failed. Please try again.");
+            if (err.response?.status === 401) {
+                toast.error("Invalid email or password");
+            } else {
+                toast.error("Login failed. Please try again.");
+            }
         } finally {
             setLoading(false);
         }
@@ -137,8 +137,9 @@ const AdminLogin = () => {
                                 <button
                                     type="submit"
                                     className="w-full py-2 text-white text-md rounded-md bg-red-500"
+                                    disabled={loading}
                                 >
-                                    Login
+                                    {loading ? 'Logging in...' : 'Login'}
                                 </button>
                                 {error && (
                                     <p style={{ color: "red" }}>{error}</p>

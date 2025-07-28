@@ -1,5 +1,10 @@
 import axios from "axios";
-import { usesAuthContext } from "../../contexts/AuthContext";
+
+let globalLogout = () => console.warn("Logout function not initialized yet");
+
+export const setGlobalLogout = (logoutFn) => {
+  globalLogout = logoutFn;
+};
 
 const ErrorCodeMessages = {
   401: "Unauthorized",
@@ -11,33 +16,19 @@ const ErrorCodeMessages = {
 export const BASE_URL = import.meta.env.VITE_APP_URL;
 
 export const HttpService = axios.create({
-   baseURL: BASE_URL, 
-  // withCredentials: true,
+   baseURL: "https://subs.eatstekltd.co.uk", 
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
   },
 });
 
-
-let isRefresh = false;
-let failedRequests = [];
-const processQueue = (error, token = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
-  });
-
-  failedQueue = [];
-};  
-
-//Http request interceptor for auth token
 HttpService.interceptors.request.use(
   (config) => {
+        console.log('1. I am here')
+
     const token = localStorage.getItem('token');
+
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
     }
@@ -48,25 +39,25 @@ HttpService.interceptors.request.use(
   }
 );
 
-//Http response interceptor
 HttpService.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+
     const status = error.response?.status;
-    const { refreshToken, logout } = usesAuthContext();
+    const isLoginRequest = error.config?.url?.includes('/auth/login');
  
-    if (status === 401 && !originalRequest._retry) {
-       originalRequest._retry = true;
-      
+    if ((status === 401 || !localStorage.getItem('token')) && !isLoginRequest) {
       try {
-        const newToken = await refreshToken();
-        originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-        return api(originalRequest);
+      await globalLogout();
+     
       } catch (refreshError) {
-        logout();
-        return Promise.reject(refreshError);
+        console.error("Logout failed:", err);
+        // Force cleanup if logout fails
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.href = "/login";
       }
+      return Promise.reject('Session expired');
     }
     
     return Promise.reject(ErrorCodeMessages[status] || "Something went wrong");

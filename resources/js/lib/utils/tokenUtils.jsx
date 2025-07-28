@@ -1,71 +1,37 @@
-import {jwtDecode} from "jwt-decode";
-import axios from "axios";
+import { jwtDecode } from "jwt-decode";
 
-let refreshTimer = null;
+let logoutTimer = null;
 
-// Function to clear the refresh timer
-export const clearRefreshTimer = () => {
-    if (refreshTimer) {
-        clearTimeout(refreshTimer);
-        refreshTimer = null;
+export const clearLogoutTimer = () => {
+    if (logoutTimer) {
+        clearTimeout(logoutTimer);
+        logoutTimer = null;
     }
 };
 
-export const getTokenExpiration = (token) => {
-    const decodedToken = jwtDecode(token);
-    return decodedToken.exp * 1000;
-};
-
-export const startRefreshTimer = (token) => {
-    if (!token) {
-        return;
-      }
+export const startLogoutTimer = (logoutCallback) => {
+    clearLogoutTimer();
     
-    const expirationTime = getTokenExpiration(token);
-    const currentTime = Date.now();
-    const timeUntilExpiration = expirationTime - currentTime;
-
-
-    //refresh the token 1 minute before the expiration
-    const refreshThershold = 60 * 1000;
-
-    if (timeUntilExpiration > refreshThershold) {
-
-        refreshTimer = setTimeout(() => {
-            refreshToken();
-        }, timeUntilExpiration - refreshThershold);
-
+    const token = localStorage.getItem("token");
+    
+    if (!token) {
+        logoutCallback?.();
+        return;
     }
-};
-
-export const refreshToken = async () => {
+    
     try {
-        const response = await axios.post(
-            `auth/api/refresh`,
-            {},
-            {
-                headers: {
-                    Authorization: `Bearer ${
-                        localStorage.getItem("token")
-                    }`,
-                },
-            }
-        );
+        const { exp } = jwtDecode(token);
+        const expiresIn = exp * 1000 - Date.now();
 
-        const newToken = response.data.token;
-        localStorage.setItem("token", newToken);
+        if (expiresIn <= 0) {
+            logoutCallback?.();
+            return;
+        }
 
-        //Restart the refresh timer for the new token
-        startRefreshTimer(newToken);
-        return newToken;
+        logoutTimer = setTimeout(() => {
+            logoutCallback?.();
+        }, expiresIn);
     } catch (error) {
-        console.error("Failed to refresh the token", error);
-        throw error;
+        logoutCallback?.();
     }
 };
-
-// Initialize the refresh timer when the app loads
-const token = localStorage.getItem("token");
-if (token) {
-  startRefreshTimer(token);
-}
