@@ -4,6 +4,8 @@ import SideBar from '../Components/SideBar';
 import Header from "../Components/Header";
 import ClientRegistration from './Subscriptions/Create';
 import UpdateSubscription from "./Subscriptions/Update";
+import BlockSubscription from "./Subscriptions/Block";
+import UnBlockSubscription from "./Subscriptions/UnBlock";
 
 export default function AdminScreenPage(){
     
@@ -25,6 +27,10 @@ export default function AdminScreenPage(){
                 return <ClientRegistration />;
             case "renewSubscription":
                 return <UpdateSubscription />;
+            case "blockSubscription":
+                return <BlockSubscription />;
+            case "unblockSubscription":
+                return <UnBlockSubscription />;
             case "subscribedUsers":
                 return <div> Subscribed Users </div>;
             default:
@@ -37,17 +43,17 @@ export default function AdminScreenPage(){
     };
 
     return (
-       <div className="flex flex-col min-h-screen bg-gray-100">
-            <div className="flex flex-1 overflow-hidden">
+    //    <div className="flex flex-col min-h-screen bg-gray-400">
+            <div className="flex flex-1 overflow-hidden bg-gray-100">
                 <SideBar onNavClick={setCurrentView} />
                 <div className="flex-1 flex flex-col overflow-hidden">
                     <Header />
-                    <main className="flex-1 overflow-y-auto p-6">
+                    <main className="flex-1 overflow-y-auto p-4">
                         {renderComponent()}
                     </main>
                 </div>
             </div>
-        </div>
+        // </div>
         
     );
 }

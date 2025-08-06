@@ -5,8 +5,9 @@ import {
     useEffect,
     useCallback,
 } from "react";
-import { clearLogoutTimer, startLogoutTimer } from "../utils/tokenUtils";
-import { setGlobalLogout } from "../services/api/HttpService";
+import { clearLogoutTimer, startLogoutTimer, startIdleTimer } from "../utils/tokenUtils";
+// import { setGlobalLogout } from "../services/api/HttpService";
+import AuthService from "../services/auth/AuthService"
 
 const AuthContext = createContext(undefined);
 
@@ -26,8 +27,22 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         localStorage.removeItem("user");
         localStorage.removeItem("token");
-        window.location.href = "/login";
     }, []);
+
+    const idle_token_Logout = useCallback(async () => {
+           
+           try {
+          await AuthService.logout() 
+          console.log("Automatic logout: API success");
+        } catch (err) {
+          console.error("Automatic logout API error:", err);
+        } finally {
+              clearLogoutTimer();
+        setUser(null);
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+        }
+        }, []);
 
     const login = useCallback(
         (userData) => {
@@ -36,9 +51,10 @@ export const AuthProvider = ({ children }) => {
 
             setUser(JSON.parse(localStorage.getItem("user")));
 
-            startLogoutTimer(logout);
+             startLogoutTimer(idle_token_Logout);
+            startIdleTimer(idle_token_Logout);
         },
-        [logout]
+        []
     );
 
     useEffect(() => {
@@ -50,22 +66,23 @@ export const AuthProvider = ({ children }) => {
       if (token && userData) {
         try {
             setUser(JSON.parse(userData));
-            startLogoutTimer(logout);
+            startLogoutTimer(idle_token_Logout);
+            startIdleTimer(idle_token_Logout)
           
         } catch (error) {
           console.error("Token validation failed:", error);
-          logout();
+          idle_token_Logout();
         }
       }
     };
 
     initializeAuth();
-    setGlobalLogout(logout);
+    // setGlobalLogout(idle_token_Logout);
     
     return () => {
       clearLogoutTimer();
     };
-  }, [logout]);
+  }, [idle_token_Logout]);
 
     return (
         <AuthContext.Provider
@@ -73,6 +90,7 @@ export const AuthProvider = ({ children }) => {
                 user,
                 login,
                 logout,
+                idle_token_Logout,
             }}
         >
             {children}

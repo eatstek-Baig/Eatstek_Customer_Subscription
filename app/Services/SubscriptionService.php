@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Client;
 use App\Models\Subscription;
 use Exception;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -18,88 +19,92 @@ class SubscriptionService
         ?string $description
     ): Subscription {
 
-        $subscription = $client->subscription()->latest()->first();
+        return DB::transaction(function () use ($client, $isTrial, $amount, $validDays, $description) {
 
-        if (!$subscription) {
-            $subscription = new Subscription([
-                'client_id' => $client->id,
+            $subscription = $client->subscription()->latest()->first();
+
+            if (!$subscription) {
+
+                $subscription = new Subscription([
+                    'client_id' => $client->id,
+                    'amount_paid' => $isTrial ? 0 : $amount,
+                    'description' => $description,
+                    'is_trial' => $isTrial,
+                    'expires_at' => now()->addMinutes($validDays),
+                    'valid_days' => $validDays,
+                    'is_active' => true
+                ]);
+            }
+
+            $subscription->update([
                 'amount_paid' => $isTrial ? 0 : $amount,
                 'description' => $description,
                 'is_trial' => $isTrial,
                 'expires_at' => now()->addMinutes($validDays),
-                'valid_days' => $validDays,
+                'valid_days' => (int) now()->diffInMinutes(now()->addMinutes($validDays), false),
                 'is_active' => true
             ]);
-        }
 
-        $subscription->update([
-            'amount_paid' => $isTrial ? 0 : $amount,
-            'description' => $description,
-            'is_trial' => $isTrial,
-            'expires_at' => now()->addMinutes($validDays),
-            'valid_days' => (int) now()->diffInMinutes(now()->addMinutes($validDays), false),
-            'is_active' => true
-        ]);
+            if (!$this->syncWithClient($client)) {
+                logger('client side syncing failed');
+                throw new Exception("Failed to sync block status with client");
+            }
 
-        $client->subscription()->save($subscription);
-
-        //sync with the client 
-        $this->syncWithClient($client);
-
-        return $subscription;
+            return $subscription;
+        });
     }
 
     protected function syncWithClient(Client $client)
     {
-        try {
-            $subscription = $client->subscription;
+        $subscription = $client->subscription;
 
-            if (!$subscription) {
-                throw new Exception('Subscription not found');
-            }
-
-            $subscribedPayload = [
-                'token' => $client->subscription_token,
-                'action' => $client->activeSubscription() ? 'activate' : 'deactivate',
-                'days' => $subscription->valid_days,
-                'amount_paid' => $subscription->amount_paid,
-            ];
-
-            $newSubscriptionPayload = [
-                'token' => $client->subscription_token,
-                'action' => $client->activeSubscription() ? 'activate' : 'deactivate',
-                'days' => $subscription->valid_days,
-                'amount_paid' => $subscription->amount_paid,
-                'is_trial' => $subscription->is_trial,
-            ];
-
-            $headers = [
-                'Accept' => 'application/json',
-                'Content-Type' => 'application/json',
-            ];
-
-            if (!$subscription->is_trial) {
-
-                // $response = Http::retry(2, 1000, function () use ($client, $subscribedPayload) {
-                $innerResponse = Http::withHeaders($headers)->patch("{$client->domain}/api/subscription/update", $subscribedPayload);
-
-                logger($innerResponse->body());
-
-                if (!$innerResponse->successful()) {
-                    logger("Subscription update failed: {$innerResponse->body()}");
-                }
-            }
-
-            // $response = Http::retry(2, 1000, function() use ($client, $newSubscriptionPayload) {
-            $response = Http::withHeaders($headers)->post("{$client->domain}/api/subscription/store", $newSubscriptionPayload);
-
-            if (!$response->successful()) {
-                logger("failed to sync with the client: {$response->body()}");
-            }
-
-        } catch (Exception $ex) {
-            return Log::error('Client sync error' . $ex->getMessage());
+        if (!$subscription) {
+            logger('Subscription not found');
+            return false;
         }
+
+        $subscribedPayload = [
+            'token' => $client->subscription_token,
+            'action' => $client->activeSubscription() ? 'activate' : 'deactivate',
+            'days' => $subscription->valid_days,
+            'amount_paid' => $subscription->amount_paid,
+        ];
+
+        $newSubscriptionPayload = [
+            'token' => $client->subscription_token,
+            'action' => $client->activeSubscription() ? 'activate' : 'deactivate',
+            'days' => $subscription->valid_days,
+            'amount_paid' => $subscription->amount_paid,
+            'is_trial' => $subscription->is_trial,
+        ];
+
+        $headers = [
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
+        ];
+
+        if (!$subscription->is_trial) {
+
+            $innerResponse = Http::withHeaders($headers)->patch("{$client->domain}/api/subscription/update", $subscribedPayload);
+
+            $innerResponseData = $innerResponse->json();
+
+            if (!$innerResponse->successful() || !$innerResponseData['success']) {
+                logger("Subscription update failed: {$innerResponse->body()}");
+                return false;
+            }
+            return true;
+        }
+
+        $response = Http::withHeaders($headers)->post("{$client->domain}/api/subscription/store", $newSubscriptionPayload);
+
+        $responseData = $response->json();
+
+        if (!$response->successful() || !$responseData['success']) {
+            logger("failed to sync with the client: {$response->body()}");
+            return false;
+        }
+        return true;
     }
 
     //checking the subscription
@@ -158,7 +163,9 @@ class SubscriptionService
                 'action' => 'deactivate',
             ]);
 
-            if (!$response->successful()) {
+            $responseData = $response->json();
+
+            if (!$response->successful() || !$responseData['success']) {
                 logger("Error syncing with client: {$client->name}: " . $response->body());
             }
 

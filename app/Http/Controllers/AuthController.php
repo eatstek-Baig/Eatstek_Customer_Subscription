@@ -137,32 +137,6 @@ class AuthController extends Controller
         ]);
     }
 
-    public function refresh()
-    {
-        try {
-            $token = JWTAuth::getToken();
-
-            if (!JWTAuth::getToken()) {
-                return response()->json([
-                    'error' => 'Token not provided'
-                ], 400);
-            }
-
-            $refreshToken = JWTAuth::refresh($token);
-            $newToken = $this->respondWithToken($refreshToken)->original['access_token'];
-
-            return response()->json([
-                'token' => $newToken,
-            ]);
-        } catch (Exception $ex) {
-            return response()->json([
-                "error" => $ex->getMessage(),
-                "line" => $ex->getLine(),
-                "file" => $ex->getFile()
-            ], 500);
-        }
-    }
-
     protected function respondWithToken($token)
     {
         return response()->json([

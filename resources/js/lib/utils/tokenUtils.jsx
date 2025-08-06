@@ -1,12 +1,14 @@
 import { jwtDecode } from "jwt-decode";
 
 let logoutTimer = null;
+let idleTimer = null;
+const IDLE_TIMEOUT = 5 * 60 * 1000; 
 
 export const clearLogoutTimer = () => {
-    if (logoutTimer) {
-        clearTimeout(logoutTimer);
-        logoutTimer = null;
-    }
+    if (logoutTimer) clearTimeout(logoutTimer);
+  if (idleTimer) clearTimeout(idleTimer);
+  logoutTimer = null;
+  idleTimer = null;
 };
 
 export const startLogoutTimer = (logoutCallback) => {
@@ -34,4 +36,29 @@ export const startLogoutTimer = (logoutCallback) => {
     } catch (error) {
         logoutCallback?.();
     }
+};
+
+export const startIdleTimer = (logoutCallback) => {
+  const resetIdleTimer = () => {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(logoutCallback, IDLE_TIMEOUT);
+  };
+
+  // Events that indicate activity
+  const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+  
+  events.forEach(event => {
+    window.addEventListener(event, resetIdleTimer);
+  });
+
+  // Start initial timer
+  resetIdleTimer();
+
+  // Cleanup function
+  return () => {
+    events.forEach(event => {
+      window.removeEventListener(event, resetIdleTimer);
+    });
+    clearTimeout(idleTimer);
+  };
 };

@@ -11,6 +11,10 @@ import {
     FaChartLine,
     FaCheck,
     FaBan,
+    FaUserPlus,
+    FaSync,
+    FaUsers,
+    FaCheckCircle,
 } from "react-icons/fa";
 import { FaBoxOpen, FaReceipt, FaTruck, FaChartBar } from "react-icons/fa";
 import {
@@ -52,18 +56,18 @@ const Sidebar = ({ onNavClick }) => {
                     <li>
                         <button
                             onClick={() => onNavClick("register")}
-                            className="flex items-center space-x-2 hover:text-yellow-400"
+                            className="flex items-center space-x-2 hover:text-red-500 hover:cursor-pointer"
                         >
-                            <FaHome /> {isOpen && <span>Register Client </span>}
+                            <FaUserPlus /> {isOpen && <span> Register Client </span>}
                         </button>
                     </li>
                     {/* Renew Subscription tab */}
                     <li>
                         <button
                             onClick={() => onNavClick("renewSubscription")}
-                            className="flex items-center space-x-2 hover:text-yellow-400"
+                            className="flex items-center space-x-2 hover:text-red-500 hover:cursor-pointer"
                         >
-                            <FaChartLine />{" "}
+                            <FaSync />{" "}
                             {isOpen && <span> Renew Subscription </span>}
                         </button>
                     </li>
@@ -72,10 +76,30 @@ const Sidebar = ({ onNavClick }) => {
                     <li>
                         <button
                             onClick={() => onNavClick("subscribedUsers")}
-                            className="flex items-center space-x-2 hover:text-yellow-400 w-full"
+                            className="flex items-center space-x-2 hover:text-red-500 w-full hover:cursor-pointer"
                         >
-                            <FaClipboardList />{" "}
+                            <FaUsers />{" "}
                             {isOpen && <span> Subscibed Users </span>}
+                        </button>
+                    </li>
+                    {/* blocked subscriptions */}
+                    <li>
+                        <button
+                            onClick={() => onNavClick("blockSubscription")}
+                            className="flex items-center space-x-2 hover:text-red-500 w-full hover:cursor-pointer"
+                        >
+                            <FaBan />{" "}
+                            {isOpen && <span> Block Subscription </span>}
+                        </button>
+                    </li>
+                    {/* un blocked subscriptions */}
+                    <li>
+                        <button
+                            onClick={() => onNavClick("unblockSubscription")}
+                            className="flex items-center space-x-2 hover:text-red-500 w-full hover:cursor-pointer"
+                        >
+                            <FaCheckCircle />{" "}
+                            {isOpen && <span> Unblock Subscription </span>}
                         </button>
                     </li>
                 </ul>

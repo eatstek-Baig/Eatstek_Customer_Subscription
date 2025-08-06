@@ -1,10 +1,10 @@
 import axios from "axios";
 
-let globalLogout = () => console.warn("Logout function not initialized yet");
+// let globalLogout = () => console.warn("Logout function not initialized yet");
 
-export const setGlobalLogout = (logoutFn) => {
-  globalLogout = logoutFn;
-};
+// export const setGlobalLogout = (logoutFn) => {
+//   globalLogout = logoutFn;
+// };
 
 const ErrorCodeMessages = {
   401: "Unauthorized",
@@ -43,22 +43,22 @@ HttpService.interceptors.response.use(
   (response) => response,
   async (error) => {
 
-    const status = error.response?.status;
-    const isLoginRequest = error.config?.url?.includes('/auth/login');
+    // const status = error.response?.status;
+    // const isLoginRequest = error.config?.url?.includes('/auth/login');
  
-    if ((status === 401 || !localStorage.getItem('token')) && !isLoginRequest) {
-      try {
-      await globalLogout();
+    // if ((status === 401 || !localStorage.getItem('token')) && !isLoginRequest) {
+    //   try {
+    //   await globalLogout();
      
-      } catch (refreshError) {
-        console.error("Logout failed:", err);
-        // Force cleanup if logout fails
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        window.location.href = "/login";
-      }
-      return Promise.reject('Session expired');
-    }
+    //   } catch (refreshError) {
+    //     console.error("Logout failed:", err);
+    //     // Force cleanup if logout fails
+    //     localStorage.removeItem("token");
+    //     localStorage.removeItem("user");
+    //     window.location.href = "/login";
+    //   }
+    //   return Promise.reject('Session expired');
+    // }
     
     return Promise.reject(ErrorCodeMessages[status] || "Something went wrong");
   }

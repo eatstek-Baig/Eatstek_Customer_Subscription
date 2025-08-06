@@ -13,7 +13,8 @@ class Subscription extends Model
         'description',
         'expires_at',
         'is_trial',
-        'is_active'
+        'is_active',
+        'is_blocked'
     ];
 
     protected $dates = [

@@ -22,6 +22,7 @@ const validationSchema = Yup.object().shape({
 });
 
 const ClientRegistration = () => {
+    
     const navigate = useNavigate();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
